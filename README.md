@@ -13,6 +13,7 @@ Home Assistant custom integration for reading an AirNut Sport device through Blu
 - PM2.5
 - Battery level
 - BLE discovery or manual MAC address configuration
+- AirNut-named devices are shown first in the manual Bluetooth device list
 - Configurable polling interval and disconnect delay
 
 ## Installation

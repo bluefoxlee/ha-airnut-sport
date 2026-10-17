@@ -74,10 +74,17 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         discovered = async_discovered_service_info(self.hass, connectable=True)
+        discovered = sorted(
+            (device for device in discovered if device.connectable),
+            key=lambda device: (
+                0 if "airnut" in (device.name or "").casefold() else 1,
+                (device.name or "Unknown").casefold(),
+                device.address,
+            ),
+        )
         devices = {
             device.address: f"{device.name or 'Unknown'} ({device.address})"
             for device in discovered
-            if device.connectable
         }
         mac_schema = vol.In(devices) if devices else str
         return self.async_show_form(
