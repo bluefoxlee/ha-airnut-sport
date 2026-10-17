@@ -4,6 +4,8 @@ Home Assistant custom integration for reading an AirNut Sport device through Blu
 
 > This project is a preservation and compatibility rewrite. It is not an official AirNut or Moji project.
 
+繁體中文說明：[README_zh-Hant.md](README_zh-Hant.md)
+
 ## Features
 
 - Temperature
@@ -29,9 +31,10 @@ Recommended settings based on the original usage notes:
 The starting point was the `airnut_sport.zip` package supplied by the user. The original package points to the AirNut Sport discussion thread:
 
 - Original discussion: https://bbs.hassbian.com/thread-33040-1-1.html
+- Original forum author: [loveyolanda](https://bbs.hassbian.com/home.php?mod=space&uid=28624) (UID: 28624)
 - Original source archive: `airnut_sport.zip` supplied by the user
 
-The original archive did not include a clear author name or license file. Please preserve the original forum attribution and follow the forum author's redistribution terms.
+The original archive did not include a license file. Please preserve the original forum attribution and follow the forum author's redistribution terms.
 
 ## What was rewritten
 
@@ -65,5 +68,5 @@ The current integration is read-only. No verified BLE command for remotely turni
 
 ## Credits
 
-- Original AirNut Sport integration: credited to the author of the forum thread above.
+- Original AirNut Sport integration: [loveyolanda](https://bbs.hassbian.com/home.php?mod=space&uid=28624), from the forum discussion above.
 - Compatibility rewrite and maintenance in this repository: Jerry / Codex, 2026-10-17.
