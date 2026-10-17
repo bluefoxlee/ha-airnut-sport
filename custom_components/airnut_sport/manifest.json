@@ -1,7 +1,7 @@
 {
   "domain": "airnut_sport",
   "name": "AirNut Sport (空氣果)",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "documentation": "https://bbs.hassbian.com/thread-33040-1-1.html",
   "config_flow": true,
   "integration_type": "device",

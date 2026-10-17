@@ -14,6 +14,7 @@ Home Assistant custom integration for reading an AirNut Sport device through Blu
 - Humidity
 - PM2.5
 - Battery level
+- Diagnostic BLE revision fields (firmware, hardware, and software revision)
 - BLE discovery or manual MAC address configuration
 - AirNut-named devices are shown first in the manual Bluetooth device list
 - Configurable polling interval and disconnect delay
@@ -49,6 +50,7 @@ The following changes were made for the current Home Assistant environment (test
 - Made BLE cleanup synchronous and deterministic: stop notifications, wait for the configured delay, then disconnect.
 - Added a per-device update lock so overlapping refreshes do not create competing BLE connections.
 - Added response validation and clearer diagnostic logging.
+- Probed the standard BLE Device Information Service revision fields in read-only mode. The tested devices returned placeholder labels (`Firmware Revision`, `Hardware Revision`, and `Software Revision`) rather than actual version numbers.
 - Restricted device discovery to connectable BLE devices.
 - Added safer polling and disconnect-delay validation.
 - Kept the first data refresh in the background so an unavailable device does not block entity creation.
