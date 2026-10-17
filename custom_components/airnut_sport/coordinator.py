@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import time as datetime_time
 from datetime import timedelta
 
 from bleak_retry_connector import BleakClientWithServiceCache, establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CMD_READ_ALL,
+    DEFAULT_NIGHT_END_TIME,
+    DEFAULT_NIGHT_POLLING_INTERVAL,
+    DEFAULT_NIGHT_START_TIME,
     DEVICE_INFO_SERVICE_UUID,
     DOMAIN,
     FIRMWARE_REVISION_UUID,
@@ -22,6 +27,15 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _parse_schedule_time(value: str) -> datetime_time:
+    """Parse a stored Home Assistant time selector value."""
+
+    try:
+        return datetime_time.fromisoformat(value)
+    except (TypeError, ValueError):
+        return datetime_time.fromisoformat(DEFAULT_NIGHT_START_TIME)
 
 
 def parse_payload(data: bytes | bytearray) -> dict[str, int]:
@@ -49,9 +63,16 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         address: str,
         polling_interval: int,
         disconnect_delay: int,
+        night_start_time: str = DEFAULT_NIGHT_START_TIME,
+        night_end_time: str = DEFAULT_NIGHT_END_TIME,
+        night_polling_interval: int = DEFAULT_NIGHT_POLLING_INTERVAL,
     ) -> None:
         self.address = address
         self.disconnect_delay = disconnect_delay
+        self._polling_interval = polling_interval
+        self._night_start_time = _parse_schedule_time(night_start_time)
+        self._night_end_time = _parse_schedule_time(night_end_time)
+        self._night_polling_interval = night_polling_interval
         self._ble_device = None
         self._last_data: dict[str, int | str] | None = None
         self._firmware_checked = False
@@ -67,6 +88,50 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
             name=f"AirNut Sport {address}",
             update_interval=timedelta(seconds=polling_interval),
         )
+        self._update_polling_interval()
+
+    def apply_polling_settings(
+        self,
+        polling_interval: int,
+        disconnect_delay: int,
+        night_start_time: str,
+        night_end_time: str,
+        night_polling_interval: int,
+    ) -> None:
+        """Apply polling options without rebuilding the coordinator."""
+
+        self._polling_interval = polling_interval
+        self.disconnect_delay = disconnect_delay
+        self._night_start_time = _parse_schedule_time(night_start_time)
+        self._night_end_time = _parse_schedule_time(night_end_time)
+        self._night_polling_interval = night_polling_interval
+        self._update_polling_interval()
+
+    def _is_night_time(self) -> bool:
+        """Return whether the configured night window is currently active."""
+
+        start = self._night_start_time
+        end = self._night_end_time
+        now = dt_util.now().time()
+
+        # Equal endpoints intentionally disable night mode. This makes the
+        # default 00:00-00:00 preserve the previous polling behaviour.
+        if start == end:
+            return False
+        if start < end:
+            return start <= now < end
+        # A window such as 22:00-07:00 crosses midnight.
+        return now >= start or now < end
+
+    def _update_polling_interval(self) -> None:
+        """Switch between normal and night polling intervals."""
+
+        interval = (
+            self._night_polling_interval
+            if self._is_night_time()
+            else self._polling_interval
+        )
+        self.update_interval = timedelta(seconds=interval)
 
     def _notification_handler(self, _sender, data: bytearray) -> None:
         """Receive a read-all reply from the device."""
@@ -145,6 +210,10 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
 
     async def _async_update_data(self) -> dict[str, int | str]:
         """Connect, request one packet, decode it, and disconnect."""
+
+        # Re-evaluate at every refresh so a schedule boundary takes effect
+        # without requiring an integration reload.
+        self._update_polling_interval()
 
         async with self._update_lock:
             current_device = bluetooth.async_ble_device_from_address(

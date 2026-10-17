@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import time as datetime_time
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.bluetooth import (
@@ -9,18 +11,85 @@ from homeassistant.components.bluetooth import (
     async_discovered_service_info,
 )
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 
 from .const import (
     CONF_DISCONNECT_DELAY,
     CONF_MAC,
+    CONF_NIGHT_END_TIME,
+    CONF_NIGHT_POLLING_INTERVAL,
+    CONF_NIGHT_START_TIME,
     CONF_POLLING_INTERVAL,
     DEFAULT_DISCONNECT_DELAY,
+    DEFAULT_NIGHT_END_TIME,
+    DEFAULT_NIGHT_POLLING_INTERVAL,
+    DEFAULT_NIGHT_START_TIME,
     DEFAULT_POLLING_INTERVAL,
     DOMAIN,
     MAX_POLLING_INTERVAL,
+    MAX_NIGHT_POLLING_INTERVAL,
     MIN_DISCONNECT_DELAY,
+    MIN_NIGHT_POLLING_INTERVAL,
     MIN_POLLING_INTERVAL,
 )
+
+
+def _normalise_time(value, default: str) -> str:
+    """Store time selector values in a stable HH:MM:SS format."""
+
+    if isinstance(value, datetime_time):
+        return value.strftime("%H:%M:%S")
+    if isinstance(value, str):
+        try:
+            return datetime_time.fromisoformat(value).strftime("%H:%M:%S")
+        except ValueError:
+            pass
+    return default
+
+
+def _schedule_options(user_input: dict) -> dict:
+    """Extract and normalise the night polling options."""
+
+    return {
+        CONF_POLLING_INTERVAL: user_input[CONF_POLLING_INTERVAL],
+        CONF_DISCONNECT_DELAY: user_input[CONF_DISCONNECT_DELAY],
+        CONF_NIGHT_START_TIME: _normalise_time(
+            user_input.get(CONF_NIGHT_START_TIME), DEFAULT_NIGHT_START_TIME
+        ),
+        CONF_NIGHT_END_TIME: _normalise_time(
+            user_input.get(CONF_NIGHT_END_TIME), DEFAULT_NIGHT_END_TIME
+        ),
+        CONF_NIGHT_POLLING_INTERVAL: user_input.get(
+            CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+        ),
+    }
+
+
+def _night_schedule_schema(options: dict) -> dict:
+    """Build the shared setup/options schema for polling schedules."""
+
+    return {
+        vol.Required(
+            CONF_NIGHT_START_TIME,
+            default=options.get(CONF_NIGHT_START_TIME, DEFAULT_NIGHT_START_TIME),
+        ): selector.TimeSelector(),
+        vol.Required(
+            CONF_NIGHT_END_TIME,
+            default=options.get(CONF_NIGHT_END_TIME, DEFAULT_NIGHT_END_TIME),
+        ): selector.TimeSelector(),
+        vol.Required(
+            CONF_NIGHT_POLLING_INTERVAL,
+            default=options.get(
+                CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+            ),
+        ): vol.All(
+            vol.Coerce(int),
+            vol.Range(
+                min=MIN_NIGHT_POLLING_INTERVAL,
+                max=MAX_NIGHT_POLLING_INTERVAL,
+            ),
+        ),
+    }
 
 
 class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -49,6 +118,9 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 options={
                     CONF_POLLING_INTERVAL: DEFAULT_POLLING_INTERVAL,
                     CONF_DISCONNECT_DELAY: DEFAULT_DISCONNECT_DELAY,
+                    CONF_NIGHT_START_TIME: DEFAULT_NIGHT_START_TIME,
+                    CONF_NIGHT_END_TIME: DEFAULT_NIGHT_END_TIME,
+                    CONF_NIGHT_POLLING_INTERVAL: DEFAULT_NIGHT_POLLING_INTERVAL,
                 },
             )
 
@@ -67,10 +139,7 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=f"AirNut Sport {mac}",
                 data={CONF_MAC: mac},
-                options={
-                    CONF_POLLING_INTERVAL: user_input[CONF_POLLING_INTERVAL],
-                    CONF_DISCONNECT_DELAY: user_input[CONF_DISCONNECT_DELAY],
-                },
+                options=_schedule_options(user_input),
             )
 
         discovered = async_discovered_service_info(self.hass, connectable=True)
@@ -87,30 +156,30 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             for device in discovered
         }
         mac_schema = vol.In(devices) if devices else str
+        schema = {
+            vol.Required(CONF_MAC): mac_schema,
+            vol.Optional(
+                CONF_POLLING_INTERVAL,
+                default=DEFAULT_POLLING_INTERVAL,
+            ): vol.All(
+                vol.Coerce(int),
+                vol.Range(
+                    min=MIN_POLLING_INTERVAL,
+                    max=MAX_POLLING_INTERVAL,
+                ),
+            ),
+            vol.Optional(
+                CONF_DISCONNECT_DELAY,
+                default=DEFAULT_DISCONNECT_DELAY,
+            ): vol.All(
+                vol.Coerce(int),
+                vol.Range(min=MIN_DISCONNECT_DELAY),
+            ),
+        }
+        schema.update(_night_schedule_schema({}))
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_MAC): mac_schema,
-                    vol.Optional(
-                        CONF_POLLING_INTERVAL,
-                        default=DEFAULT_POLLING_INTERVAL,
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.Range(
-                            min=MIN_POLLING_INTERVAL,
-                            max=MAX_POLLING_INTERVAL,
-                        ),
-                    ),
-                    vol.Optional(
-                        CONF_DISCONNECT_DELAY,
-                        default=DEFAULT_DISCONNECT_DELAY,
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.Range(min=MIN_DISCONNECT_DELAY),
-                    ),
-                }
-            ),
+            data_schema=vol.Schema(schema),
         )
     @staticmethod
     @callback
@@ -128,33 +197,33 @@ class AirNutOptionsFlowHandler(config_entries.OptionsFlow):
 
         options = self.config_entry.options
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            return self.async_create_entry(title="", data=_schedule_options(user_input))
 
+        schema = {
+            vol.Required(
+                CONF_POLLING_INTERVAL,
+                default=options.get(
+                    CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL
+                ),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.Range(
+                    min=MIN_POLLING_INTERVAL,
+                    max=MAX_POLLING_INTERVAL,
+                ),
+            ),
+            vol.Required(
+                CONF_DISCONNECT_DELAY,
+                default=options.get(
+                    CONF_DISCONNECT_DELAY, DEFAULT_DISCONNECT_DELAY
+                ),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.Range(min=MIN_DISCONNECT_DELAY),
+            ),
+        }
+        schema.update(_night_schedule_schema(options))
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_POLLING_INTERVAL,
-                        default=options.get(
-                            CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL
-                        ),
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.Range(
-                            min=MIN_POLLING_INTERVAL,
-                            max=MAX_POLLING_INTERVAL,
-                        ),
-                    ),
-                    vol.Required(
-                        CONF_DISCONNECT_DELAY,
-                        default=options.get(
-                            CONF_DISCONNECT_DELAY, DEFAULT_DISCONNECT_DELAY
-                        ),
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.Range(min=MIN_DISCONNECT_DELAY),
-                    ),
-                }
-            ),
+            data_schema=vol.Schema(schema),
         )

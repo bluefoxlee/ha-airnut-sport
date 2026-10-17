@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,8 +10,14 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CONF_DISCONNECT_DELAY,
     CONF_MAC,
+    CONF_NIGHT_END_TIME,
+    CONF_NIGHT_POLLING_INTERVAL,
+    CONF_NIGHT_START_TIME,
     CONF_POLLING_INTERVAL,
     DEFAULT_DISCONNECT_DELAY,
+    DEFAULT_NIGHT_END_TIME,
+    DEFAULT_NIGHT_POLLING_INTERVAL,
+    DEFAULT_NIGHT_START_TIME,
     DEFAULT_POLLING_INTERVAL,
     DOMAIN,
 )
@@ -41,6 +46,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         disconnect_delay=entry.options.get(
             CONF_DISCONNECT_DELAY, DEFAULT_DISCONNECT_DELAY
+        ),
+        night_start_time=entry.options.get(
+            CONF_NIGHT_START_TIME, DEFAULT_NIGHT_START_TIME
+        ),
+        night_end_time=entry.options.get(
+            CONF_NIGHT_END_TIME, DEFAULT_NIGHT_END_TIME
+        ),
+        night_polling_interval=entry.options.get(
+            CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
         ),
     )
 
@@ -72,10 +86,21 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     """Apply changed polling options without restarting Home Assistant."""
 
     coordinator: AirNutSportCoordinator = hass.data[DOMAIN][entry.entry_id]
-    coordinator.update_interval = timedelta(
-        seconds=entry.options.get(CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL)
-    )
-    coordinator.disconnect_delay = entry.options.get(
-        CONF_DISCONNECT_DELAY, DEFAULT_DISCONNECT_DELAY
+    coordinator.apply_polling_settings(
+        polling_interval=entry.options.get(
+            CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL
+        ),
+        disconnect_delay=entry.options.get(
+            CONF_DISCONNECT_DELAY, DEFAULT_DISCONNECT_DELAY
+        ),
+        night_start_time=entry.options.get(
+            CONF_NIGHT_START_TIME, DEFAULT_NIGHT_START_TIME
+        ),
+        night_end_time=entry.options.get(
+            CONF_NIGHT_END_TIME, DEFAULT_NIGHT_END_TIME
+        ),
+        night_polling_interval=entry.options.get(
+            CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+        ),
     )
     await coordinator.async_request_refresh()

@@ -7,7 +7,10 @@
         "data": {
           "mac": "裝置位址",
           "polling_interval": "輪詢間隔（10–120 秒）",
-          "disconnect_delay": "斷線延遲（至少 1 秒）"
+          "disconnect_delay": "斷線延遲（至少 1 秒）",
+          "night_start_time": "夜間開始時間（00:00–00:00 停用）",
+          "night_end_time": "夜間結束時間",
+          "night_polling_interval": "夜間輪詢間隔（10–120 秒）"
         }
       },
       "bluetooth_confirm": {
@@ -25,7 +28,10 @@
         "title": "AirNut Sport 設定",
         "data": {
           "polling_interval": "輪詢間隔（10–120 秒）",
-          "disconnect_delay": "斷線延遲（至少 1 秒）"
+          "disconnect_delay": "斷線延遲（至少 1 秒）",
+          "night_start_time": "夜間開始時間（00:00–00:00 停用）",
+          "night_end_time": "夜間結束時間",
+          "night_polling_interval": "夜間輪詢間隔（10–120 秒）"
         }
       }
     }

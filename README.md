@@ -18,6 +18,7 @@ Home Assistant custom integration for reading an AirNut Sport device through Blu
 - BLE discovery or manual MAC address configuration
 - AirNut-named devices are shown first in the manual Bluetooth device list
 - Configurable polling interval and disconnect delay
+- Optional night schedule with a slower polling interval
 
 ## Installation
 
@@ -29,6 +30,13 @@ Recommended settings based on the original usage notes:
 
 - Polling interval: no more than 130 seconds. This integration limits it to 120 seconds.
 - Disconnect delay: at least 1 second.
+
+The options flow also supports a night schedule. During the configured window,
+the integration uses the slower night polling interval instead of the normal
+one. Set both night times to `00:00` to disable night mode. The window can
+cross midnight, for example `22:00` to `07:00`. This changes the BLE polling
+frequency; it does not send a display-off command. Keep the night interval at
+or below 120 seconds so an unplugged device has a chance to stay awake.
 
 ## Source and attribution
 
