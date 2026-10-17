@@ -1,0 +1,18 @@
+{
+  "domain": "airnut_sport",
+  "name": "AirNut Sport (空氣果)",
+  "version": "1.0.1",
+  "documentation": "https://bbs.hassbian.com/thread-33040-1-1.html",
+  "config_flow": true,
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "dependencies": [
+    "bluetooth",
+    "bluetooth_adapters"
+  ],
+  "requirements": [
+    "bleak",
+    "bleak-retry-connector"
+  ],
+  "codeowners": []
+}
