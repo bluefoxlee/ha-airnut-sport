@@ -4,6 +4,8 @@
 
 本專案是為了保存原始成果，並針對新版 Home Assistant 做相容性改寫；並非 AirNut 或 Moji 官方專案。
 
+![AirNut Sport 圖示](custom_components/airnut_sport/brand/icon.png)
+
 ## 功能
 
 - 溫度
@@ -44,8 +46,10 @@ Home Assistant 必須具備下列其中一項：
 
 - [AirNut Sport 原始討論串](https://bbs.hassbian.com/thread-33040-1-1.html)
 - 原始論壇作者：[loveyolanda](https://bbs.hassbian.com/home.php?mod=space&uid=28624)（UID: 28624）
+- 品牌圖示：使用者提供的 `1631330723672.jpeg`，已轉換為 Home Assistant 使用的 PNG
 
 原始壓縮檔沒有附帶授權檔案，因此本專案不主張擁有原始程式碼或原始協定的所有權；重新發布時請遵守原作者與論壇規範。
+品牌圖示僅用於辨識設備，不表示本專案擁有墨跡天氣／Moji 或 AirNut 品牌權利。
 
 ## 我們的改寫
 

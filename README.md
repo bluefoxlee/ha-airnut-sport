@@ -6,6 +6,8 @@ Home Assistant custom integration for reading an AirNut Sport device through Blu
 
 繁體中文說明：[README_zh-Hant.md](README_zh-Hant.md)
 
+![AirNut Sport icon](custom_components/airnut_sport/brand/icon.png)
+
 ## Features
 
 - Temperature
@@ -34,8 +36,10 @@ The starting point was the `airnut_sport.zip` package supplied by the user. The 
 - Original discussion: https://bbs.hassbian.com/thread-33040-1-1.html
 - Original forum author: [loveyolanda](https://bbs.hassbian.com/home.php?mod=space&uid=28624) (UID: 28624)
 - Original source archive: `airnut_sport.zip` supplied by the user
+- Brand icon: `1631330723672.jpeg` supplied by the user, converted to PNG for Home Assistant branding
 
 The original archive did not include a license file. Please preserve the original forum attribution and follow the forum author's redistribution terms.
+The brand icon is used for product identification only; it does not claim ownership of the Moji/AirNut brand.
 
 ## What was rewritten
 
