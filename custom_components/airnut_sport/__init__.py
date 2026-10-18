@@ -11,13 +11,13 @@ from .const import (
     CONF_DISCONNECT_DELAY,
     CONF_MAC,
     CONF_NIGHT_END_TIME,
-    CONF_NIGHT_POLLING_INTERVAL,
     CONF_NIGHT_START_TIME,
+    CONF_NIGHT_SUSPEND_POLLING,
     CONF_POLLING_INTERVAL,
     DEFAULT_DISCONNECT_DELAY,
     DEFAULT_NIGHT_END_TIME,
-    DEFAULT_NIGHT_POLLING_INTERVAL,
     DEFAULT_NIGHT_START_TIME,
+    DEFAULT_NIGHT_SUSPEND_POLLING,
     DEFAULT_POLLING_INTERVAL,
     DOMAIN,
 )
@@ -53,8 +53,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         night_end_time=entry.options.get(
             CONF_NIGHT_END_TIME, DEFAULT_NIGHT_END_TIME
         ),
-        night_polling_interval=entry.options.get(
-            CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+        night_suspend_polling=entry.options.get(
+            CONF_NIGHT_SUSPEND_POLLING, DEFAULT_NIGHT_SUSPEND_POLLING
         ),
     )
 
@@ -64,10 +64,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Keep entity creation independent from the first Bluetooth read. This lets
     # the user wake the screen or move the proxy closer without blocking HA.
-    hass.async_create_task(
-        coordinator.async_refresh(),
-        name=f"{DOMAIN}_initial_refresh_{entry.entry_id}",
-    )
+    if not coordinator.polling_suspended:
+        hass.async_create_task(
+            coordinator.async_refresh(),
+            name=f"{DOMAIN}_initial_refresh_{entry.entry_id}",
+        )
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
@@ -99,8 +100,9 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
         night_end_time=entry.options.get(
             CONF_NIGHT_END_TIME, DEFAULT_NIGHT_END_TIME
         ),
-        night_polling_interval=entry.options.get(
-            CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+        night_suspend_polling=entry.options.get(
+            CONF_NIGHT_SUSPEND_POLLING, DEFAULT_NIGHT_SUSPEND_POLLING
         ),
     )
-    await coordinator.async_request_refresh()
+    if not coordinator.polling_suspended:
+        await coordinator.async_request_refresh()

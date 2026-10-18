@@ -9,14 +9,16 @@ from datetime import timedelta
 
 from bleak_retry_connector import BleakClientWithServiceCache, establish_connection
 from homeassistant.components import bluetooth
+from homeassistant.core import callback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .const import (
     CMD_READ_ALL,
     DEFAULT_NIGHT_END_TIME,
-    DEFAULT_NIGHT_POLLING_INTERVAL,
     DEFAULT_NIGHT_START_TIME,
+    DEFAULT_NIGHT_SUSPEND_POLLING,
     DEVICE_INFO_SERVICE_UUID,
     DOMAIN,
     FIRMWARE_REVISION_UUID,
@@ -65,14 +67,15 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         disconnect_delay: int,
         night_start_time: str = DEFAULT_NIGHT_START_TIME,
         night_end_time: str = DEFAULT_NIGHT_END_TIME,
-        night_polling_interval: int = DEFAULT_NIGHT_POLLING_INTERVAL,
+        night_suspend_polling: bool = DEFAULT_NIGHT_SUSPEND_POLLING,
     ) -> None:
         self.address = address
         self.disconnect_delay = disconnect_delay
         self._polling_interval = polling_interval
         self._night_start_time = _parse_schedule_time(night_start_time)
         self._night_end_time = _parse_schedule_time(night_end_time)
-        self._night_polling_interval = night_polling_interval
+        self._night_suspend_polling = night_suspend_polling
+        self._schedule_unsubscribers = []
         self._ble_device = None
         self._last_data: dict[str, int | str] | None = None
         self._firmware_checked = False
@@ -85,9 +88,10 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         super().__init__(
             hass,
             _LOGGER,
-            name=f"AirNut Sport {address}",
+            name=f"空氣果 Sport {address}",
             update_interval=timedelta(seconds=polling_interval),
         )
+        self._configure_schedule_listeners()
         self._update_polling_interval()
 
     def apply_polling_settings(
@@ -96,7 +100,7 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         disconnect_delay: int,
         night_start_time: str,
         night_end_time: str,
-        night_polling_interval: int,
+        night_suspend_polling: bool,
     ) -> None:
         """Apply polling options without rebuilding the coordinator."""
 
@@ -104,8 +108,55 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         self.disconnect_delay = disconnect_delay
         self._night_start_time = _parse_schedule_time(night_start_time)
         self._night_end_time = _parse_schedule_time(night_end_time)
-        self._night_polling_interval = night_polling_interval
+        self._night_suspend_polling = night_suspend_polling
+        self._configure_schedule_listeners()
         self._update_polling_interval()
+
+    @property
+    def polling_suspended(self) -> bool:
+        """Return whether the night schedule currently suspends polling."""
+
+        return self._night_suspend_polling and self._is_night_time()
+
+    def _configure_schedule_listeners(self) -> None:
+        """Track both daily boundaries of the configured night window."""
+
+        for unsubscribe in self._schedule_unsubscribers:
+            unsubscribe()
+        self._schedule_unsubscribers = []
+
+        if self._night_start_time == self._night_end_time:
+            return
+
+        for schedule_time in (self._night_start_time, self._night_end_time):
+            self._schedule_unsubscribers.append(
+                async_track_time_change(
+                    self.hass,
+                    self._handle_schedule_boundary,
+                    hour=schedule_time.hour,
+                    minute=schedule_time.minute,
+                    second=schedule_time.second,
+                )
+            )
+
+    @callback
+    def _handle_schedule_boundary(self, _now) -> None:
+        """Apply the new polling state when a schedule boundary is reached."""
+
+        self._update_polling_interval()
+        if not self.polling_suspended:
+            self.hass.async_create_task(
+                self.async_request_refresh(),
+                name=f"airnut_sport_resume_{self.address}",
+            )
+
+    async def async_shutdown(self) -> None:
+        """Stop boundary listeners together with the coordinator."""
+
+        for unsubscribe in self._schedule_unsubscribers:
+            unsubscribe()
+        self._schedule_unsubscribers = []
+        await super().async_shutdown()
 
     def _is_night_time(self) -> bool:
         """Return whether the configured night window is currently active."""
@@ -124,14 +175,16 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         return now >= start or now < end
 
     def _update_polling_interval(self) -> None:
-        """Switch between normal and night polling intervals."""
+        """Switch between normal polling and a suspended night schedule."""
 
-        interval = (
-            self._night_polling_interval
-            if self._is_night_time()
-            else self._polling_interval
-        )
-        self.update_interval = timedelta(seconds=interval)
+        if self.polling_suspended:
+            # A refresh may already be queued for the normal daytime interval.
+            # Cancel that timer so the device can remain asleep all night.
+            self._async_unsub_refresh()
+            self.update_interval = None
+            return
+
+        self.update_interval = timedelta(seconds=self._polling_interval)
 
     def _notification_handler(self, _sender, data: bytearray) -> None:
         """Receive a read-all reply from the device."""

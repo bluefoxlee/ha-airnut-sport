@@ -17,19 +17,17 @@ from .const import (
     CONF_DISCONNECT_DELAY,
     CONF_MAC,
     CONF_NIGHT_END_TIME,
-    CONF_NIGHT_POLLING_INTERVAL,
     CONF_NIGHT_START_TIME,
+    CONF_NIGHT_SUSPEND_POLLING,
     CONF_POLLING_INTERVAL,
     DEFAULT_DISCONNECT_DELAY,
     DEFAULT_NIGHT_END_TIME,
-    DEFAULT_NIGHT_POLLING_INTERVAL,
     DEFAULT_NIGHT_START_TIME,
+    DEFAULT_NIGHT_SUSPEND_POLLING,
     DEFAULT_POLLING_INTERVAL,
     DOMAIN,
     MAX_POLLING_INTERVAL,
-    MAX_NIGHT_POLLING_INTERVAL,
     MIN_DISCONNECT_DELAY,
-    MIN_NIGHT_POLLING_INTERVAL,
     MIN_POLLING_INTERVAL,
 )
 
@@ -59,8 +57,8 @@ def _schedule_options(user_input: dict) -> dict:
         CONF_NIGHT_END_TIME: _normalise_time(
             user_input.get(CONF_NIGHT_END_TIME), DEFAULT_NIGHT_END_TIME
         ),
-        CONF_NIGHT_POLLING_INTERVAL: user_input.get(
-            CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+        CONF_NIGHT_SUSPEND_POLLING: user_input.get(
+            CONF_NIGHT_SUSPEND_POLLING, DEFAULT_NIGHT_SUSPEND_POLLING
         ),
     }
 
@@ -78,17 +76,11 @@ def _night_schedule_schema(options: dict) -> dict:
             default=options.get(CONF_NIGHT_END_TIME, DEFAULT_NIGHT_END_TIME),
         ): selector.TimeSelector(),
         vol.Required(
-            CONF_NIGHT_POLLING_INTERVAL,
+            CONF_NIGHT_SUSPEND_POLLING,
             default=options.get(
-                CONF_NIGHT_POLLING_INTERVAL, DEFAULT_NIGHT_POLLING_INTERVAL
+                CONF_NIGHT_SUSPEND_POLLING, DEFAULT_NIGHT_SUSPEND_POLLING
             ),
-        ): vol.All(
-            vol.Coerce(int),
-            vol.Range(
-                min=MIN_NIGHT_POLLING_INTERVAL,
-                max=MAX_NIGHT_POLLING_INTERVAL,
-            ),
-        ),
+        ): selector.BooleanSelector(),
     }
 
 
@@ -113,18 +105,22 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None and self._discovery_info:
             return self.async_create_entry(
-                title=self._discovery_info.name or "AirNut Sport",
+                title=self._discovery_info.name or "空氣果 Sport",
                 data={CONF_MAC: self._discovery_info.address},
                 options={
                     CONF_POLLING_INTERVAL: DEFAULT_POLLING_INTERVAL,
                     CONF_DISCONNECT_DELAY: DEFAULT_DISCONNECT_DELAY,
                     CONF_NIGHT_START_TIME: DEFAULT_NIGHT_START_TIME,
                     CONF_NIGHT_END_TIME: DEFAULT_NIGHT_END_TIME,
-                    CONF_NIGHT_POLLING_INTERVAL: DEFAULT_NIGHT_POLLING_INTERVAL,
+                    CONF_NIGHT_SUSPEND_POLLING: DEFAULT_NIGHT_SUSPEND_POLLING,
                 },
             )
 
-        name = self._discovery_info.name if self._discovery_info else "AirNut Sport"
+        name = (
+            self._discovery_info.name
+            if self._discovery_info
+            else "空氣果 Sport"
+        )
         return self.async_show_form(
             step_id="bluetooth_confirm",
             description_placeholders={"name": name},
@@ -137,7 +133,7 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(mac)
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
-                title=f"AirNut Sport {mac}",
+                title=f"空氣果 Sport {mac}",
                 data={CONF_MAC: mac},
                 options=_schedule_options(user_input),
             )
@@ -181,6 +177,7 @@ class AirNutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(schema),
         )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
@@ -197,7 +194,9 @@ class AirNutOptionsFlowHandler(config_entries.OptionsFlow):
 
         options = self.config_entry.options
         if user_input is not None:
-            return self.async_create_entry(title="", data=_schedule_options(user_input))
+            return self.async_create_entry(
+                title="", data=_schedule_options(user_input)
+            )
 
         schema = {
             vol.Required(

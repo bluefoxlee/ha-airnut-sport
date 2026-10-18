@@ -2,19 +2,19 @@
   "config": {
     "step": {
       "user": {
-        "title": "新增 AirNut Sport",
-        "description": "讓 AirNut Sport 螢幕亮起後，從清單選擇裝置。",
+        "title": "新增 空氣果 Sport",
+        "description": "讓空氣果 Sport 螢幕亮起後，從清單選擇裝置。",
         "data": {
           "mac": "裝置位址",
-          "polling_interval": "輪詢間隔（10–120 秒）",
+          "polling_interval": "白天輪詢間隔（10–3600 秒）",
           "disconnect_delay": "斷線延遲（至少 1 秒）",
           "night_start_time": "夜間開始時間（00:00–00:00 停用）",
           "night_end_time": "夜間結束時間",
-          "night_polling_interval": "夜間輪詢間隔（10–120 秒）"
+          "night_suspend_polling": "夜間停止輪詢，讓螢幕休眠"
         }
       },
       "bluetooth_confirm": {
-        "title": "發現 AirNut Sport",
+        "title": "發現 空氣果 Sport",
         "description": "是否將 {name} 加入 Home Assistant？"
       }
     },
@@ -25,13 +25,13 @@
   "options": {
     "step": {
       "init": {
-        "title": "AirNut Sport 設定",
+        "title": "空氣果 Sport 設定",
         "data": {
-          "polling_interval": "輪詢間隔（10–120 秒）",
+          "polling_interval": "白天輪詢間隔（10–3600 秒）",
           "disconnect_delay": "斷線延遲（至少 1 秒）",
           "night_start_time": "夜間開始時間（00:00–00:00 停用）",
           "night_end_time": "夜間結束時間",
-          "night_polling_interval": "夜間輪詢間隔（10–120 秒）"
+          "night_suspend_polling": "夜間停止輪詢，讓螢幕休眠"
         }
       }
     }
