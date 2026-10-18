@@ -19,12 +19,8 @@ from .const import (
     DEFAULT_NIGHT_END_TIME,
     DEFAULT_NIGHT_START_TIME,
     DEFAULT_NIGHT_SUSPEND_POLLING,
-    DEVICE_INFO_SERVICE_UUID,
     DOMAIN,
-    FIRMWARE_REVISION_UUID,
-    HARDWARE_REVISION_UUID,
     NOTIFY_UUID,
-    SOFTWARE_REVISION_UUID,
     WRITE_UUID,
 )
 
@@ -78,10 +74,6 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
         self._schedule_unsubscribers = []
         self._ble_device = None
         self._last_data: dict[str, int | str] | None = None
-        self._firmware_checked = False
-        self._firmware_version: str | None = None
-        self._hardware_revision: str | None = None
-        self._software_revision: str | None = None
         self._notify_event = asyncio.Event()
         self._update_lock = asyncio.Lock()
 
@@ -200,67 +192,6 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
             return
         self._notify_event.set()
 
-    async def _read_device_revisions(self, client) -> dict[str, str]:
-        """Read standard BLE device revision characteristics, if present."""
-
-        if self._firmware_checked:
-            return {
-                key: value
-                for key, value in {
-                    "firmware_version": self._firmware_version,
-                    "hardware_revision": self._hardware_revision,
-                    "software_version": self._software_revision,
-                }.items()
-                if value is not None
-            }
-
-        self._firmware_checked = True
-        characteristic_uuids = {
-            "firmware_version": FIRMWARE_REVISION_UUID,
-            "hardware_revision": HARDWARE_REVISION_UUID,
-            "software_version": SOFTWARE_REVISION_UUID,
-        }
-        matching_characteristics = {}
-        for service in client.services:
-            if service.uuid.casefold() != DEVICE_INFO_SERVICE_UUID:
-                continue
-            for characteristic in service.characteristics:
-                for key, uuid in characteristic_uuids.items():
-                    if characteristic.uuid.casefold() == uuid:
-                        matching_characteristics[key] = characteristic
-
-        if not matching_characteristics:
-            _LOGGER.info(
-                "AirNut Sport %s does not expose standard BLE device revision characteristics",
-                self.address,
-            )
-            return {}
-
-        revisions = {}
-        for key, characteristic in matching_characteristics.items():
-            try:
-                raw_revision = bytes(
-                    await client.read_gatt_char(characteristic)
-                ).rstrip(b"\x00")
-                revision = raw_revision.decode("utf-8", errors="replace").strip()
-            except Exception:
-                _LOGGER.warning(
-                    "AirNut Sport %s %s read failed",
-                    self.address,
-                    key,
-                    exc_info=True,
-                )
-                continue
-
-            if revision:
-                revisions[key] = revision
-                _LOGGER.info("AirNut Sport %s %s: %s", self.address, key, revision)
-
-        self._firmware_version = revisions.get("firmware_version")
-        self._hardware_revision = revisions.get("hardware_revision")
-        self._software_revision = revisions.get("software_version")
-        return revisions
-
     async def _async_update_data(self) -> dict[str, int | str]:
         """Connect, request one packet, decode it, and disconnect."""
 
@@ -313,9 +244,7 @@ class AirNutSportCoordinator(DataUpdateCoordinator[dict[str, int | str]]):
                 if not self._last_data:
                     raise ValueError("未收到完整的空氣果回應")
 
-                data = dict(self._last_data)
-                data.update(await self._read_device_revisions(client))
-                return data
+                return dict(self._last_data)
             except asyncio.TimeoutError as err:
                 raise UpdateFailed("等待空氣果藍牙回應逾時") from err
             except UpdateFailed:

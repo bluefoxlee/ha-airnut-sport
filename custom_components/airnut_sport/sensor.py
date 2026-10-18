@@ -9,7 +9,6 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_MAC, DOMAIN
@@ -19,9 +18,6 @@ SENSOR_NAMES = {
     "humidity": "濕度",
     "pm25": "PM2.5",
     "battery": "電量",
-    "firmware_version": "韌體版本",
-    "hardware_revision": "硬體版本",
-    "software_version": "軟體版本",
 }
 
 
@@ -65,9 +61,6 @@ class AirNutSensor(CoordinatorEntity, SensorEntity):
         elif sensor_type == "battery":
             self._attr_device_class = SensorDeviceClass.BATTERY
             self._attr_native_unit_of_measurement = PERCENTAGE
-        else:
-            self._attr_entity_category = EntityCategory.DIAGNOSTIC
-            self._attr_icon = "mdi:chip"
 
     @property
     def device_info(self) -> DeviceInfo:

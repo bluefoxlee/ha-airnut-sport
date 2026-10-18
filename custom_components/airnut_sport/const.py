@@ -8,13 +8,6 @@ CHARACTERISTIC_UUID = "f000c0e1-0451-4000-b000-000000000000"
 WRITE_UUID = CHARACTERISTIC_UUID
 NOTIFY_UUID = CHARACTERISTIC_UUID
 
-# Standard Bluetooth Device Information Service / Firmware Revision String.
-# The device may expose these even though the vendor app does not use them.
-DEVICE_INFO_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
-FIRMWARE_REVISION_UUID = "00002a26-0000-1000-8000-00805f9b34fb"
-HARDWARE_REVISION_UUID = "00002a27-0000-1000-8000-00805f9b34fb"
-SOFTWARE_REVISION_UUID = "00002a28-0000-1000-8000-00805f9b34fb"
-
 # Read-all command discovered from the vendor app / protocol analysis.
 CMD_READ_ALL = bytes((0xAA, 0xAA, 0x6D, 0x55, 0x55))
 
